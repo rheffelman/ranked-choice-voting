@@ -8,7 +8,7 @@ int RCV::addCandidate(string& name)
         return -1;
     }
 
-    Candidate * temp = new Candidate;
+    Candidate* temp = new Candidate(name);
     vector <int> npv;
     npv.resize(candidates.size(), 0);
     temp->name = name;
@@ -25,9 +25,13 @@ int RCV::addCandidate(string& name)
 }
 //--
 void RCV::addBallot(vector<string>& b)
-{   
+{
     if (b.size())
-    {   
+    {
+        for (int i = 0; i < b.size(); i++)
+        {
+			b[i] = cleanse(b[i]);
+		}
         int ballotID = numBallots;
         pair <int, vector<string>> ballot;
         ballot.first = ballotID;
@@ -41,6 +45,11 @@ void RCV::addBallot(vector<string>& b)
             x = getCandidate(b[i]);
             if (x != -1)
             {
+                candidates[getCandidate(b[i])]->nthPlaceVotes[i]++;
+            }
+            else
+            {
+                addCandidate(b[i]);
                 candidates[getCandidate(b[i])]->nthPlaceVotes[i]++;
             }
         }
@@ -68,39 +77,58 @@ int RCV::addBallotsFromCSV(string& CSVinput)
         {
             continue;
         }
-        else if (CSVinput[i] == '\n')
-        {
+        if (CSVinput[i] == '\n' or CSVinput[i] == ',')
+		{
             if (!candidates_HT.count(tempCandidateName))
-            {
-                addCandidate(tempCandidateName);
-            }
+			{
+				addCandidate(tempCandidateName);
+			}
+		}
+        if (CSVinput[i] == '\n')
+        {
             tempBallot.push_back(tempCandidateName);
             addBallot(tempBallot);
             tempBallot.clear();
             tempCandidateName = "";
         }
-        else if (CSVinput[i] == ',')
+        if (CSVinput[i] == ',')
         {
-            if (!candidates_HT.count(tempCandidateName))
-            {
-                addCandidate(tempCandidateName);
-            }
             tempBallot.push_back(tempCandidateName);
             tempCandidateName = "";
         }
-        else
+        if (CSVinput[i] != ',' and CSVinput[i] != '\n' and CSVinput[i] != ' ')
         {
             tempCandidateName += CSVinput[i];
         }
+            
     }
     return 0;
 }
 //--
-vector <pair<string, int>> RCV::getResults()
+vector <string> RCV::getCandidateNames()
 {
-    return results;
+    vector <string> names;
+    for (int i = 0; i < candidates.size(); i++)
+    {
+        names.push_back(candidates[i]->name);
+    }
+    return names;
 }
 //--
+int RCV::getBallotCount()
+{
+    return ballots.size();
+}
+//--
+int RCV::getCandidateCount()
+{
+    return candidates.size();
+}
+//--
+vector <pair<string, double>> RCV::getResults()
+{
+    return results; 
+}
 void RCV::computeMajority()
 {
     if (!candidates.size())
@@ -126,8 +154,8 @@ void RCV::computeMajority()
         }
         results[i] = candidateResult;
     }
-    
-    sort(results.begin(), results.end(), (*bordaCompare));
+
+    sort(results.begin(), results.end(), (*compare));
 }
 //--
 void RCV::computeBorda()
@@ -154,7 +182,7 @@ void RCV::computeBorda()
         results[i] = candidateResult;
     }
 
-    sort(results.begin(), results.end(), (*bordaCompare));
+    sort(results.begin(), results.end(), (*compare));
 }
 //--
 void RCV::computePlurality()
@@ -169,7 +197,7 @@ void RCV::computePlurality()
         results[i] = candidateResult;
     }
 
-    sort(results.begin(), results.end(), (*bordaCompare));
+    sort(results.begin(), results.end(), (*compare));
 }
 //--
 void RCV::computePluralityWithRunoff()
@@ -178,10 +206,10 @@ void RCV::computePluralityWithRunoff()
     {
         printf("Too few candidates to do a vote.\n");
     }
-    
+
     results.resize(candidates.size());
     vector <pair<string, int>> pluralityOrder;
-    
+
     for (int i = 0; i < candidates.size(); i++)
     {
         pair <string, int> candidateResult;
@@ -189,11 +217,11 @@ void RCV::computePluralityWithRunoff()
         candidateResult.second = candidates[i]->nthPlaceVotes[0];
         pluralityOrder.push_back(candidateResult);
     }
-    
-    sort(pluralityOrder.begin(), pluralityOrder.end(), (*bordaCompare));
+
+    sort(pluralityOrder.begin(), pluralityOrder.end(), (*compare));
     pair <string, int> candidate1 = pluralityOrder[0];
     pair <string, int> candidate2 = pluralityOrder[1];
-    int ar[2] = {0, 0};
+    int ar[2] = { 0, 0 };
 
     for (int i = 0; i < ballots.size(); i++)
     {
@@ -211,13 +239,13 @@ void RCV::computePluralityWithRunoff()
             }
         }
     }
-    
-    pair <string, int> candidateResult;
+
+    pair <string, double> candidateResult;
     candidateResult.first = candidate1.first;
     candidateResult.second = ar[0];
     results[0] = candidateResult;
 
-    pair <string, int> candidateResult2;
+    pair <string, double> candidateResult2;
     candidateResult2.first = candidate2.first;
     candidateResult2.second = ar[1];
     results[1] = candidateResult2;
@@ -228,7 +256,198 @@ void RCV::computePluralityWithRunoff()
         results[i].second = 0;
     }
 
-    sort(results.begin(), results.end(), (*bordaCompare));
+    sort(results.begin(), results.end(), (*compare));
+}
+//--
+void RCV::computeIRV()
+{
+    results.clear(); 
+    computeIRVHelper(candidates, ballots, 1);
+    sort(results.begin(), results.end(), [](const pair<string, double>& a, const pair<string, double>& b)
+    {
+        return a.second > b.second;
+    });
+}
+//--
+void RCV::computeIRVHelper(vector<Candidate*>& remainingCandidates, vector<pair<int, vector<string>>>& remainingBallots, int rank)
+{
+    if (remainingCandidates.size() == 1)
+    {
+        results.push_back({ remainingCandidates[0]->name, static_cast<double>(rank) });
+        return;
+    }
+
+    map<string, int> voteCount;
+    for (auto& ballot : remainingBallots)
+    {
+        if (!ballot.second.empty())
+        {
+            string firstChoice = ballot.second[0];
+            voteCount[firstChoice]++;
+        }
+    }
+
+    string candidateToEliminate;
+    int fewestVotes = INT_MAX;
+    for (auto& candidate : remainingCandidates)
+    {
+        if (voteCount[candidate->name] < fewestVotes)
+        {
+            fewestVotes = voteCount[candidate->name];
+            candidateToEliminate = candidate->name;
+        }
+    }
+
+    vector<Candidate*> nextCandidates;
+    for (auto& candidate : remainingCandidates)
+    {
+        if (candidate->name != candidateToEliminate)
+        {
+            nextCandidates.push_back(candidate);
+        }
+    }
+
+    vector<pair<int, vector<string>>> nextBallots = remainingBallots;
+    for (auto& ballot : nextBallots)
+    {
+        ballot.second.erase(remove(ballot.second.begin(), ballot.second.end(), candidateToEliminate), ballot.second.end());
+    }
+
+    computeIRVHelper(nextCandidates, nextBallots, rank + 1);
+    results.push_back({ candidateToEliminate, static_cast<double>(rank) });
+}
+//--
+void RCV::computeCopeland()
+{
+    if (candidates.size() < 2)
+    {
+        printf("Too few candidates to do a vote.\n");
+        return;
+    }
+
+    map<string, double> copelandScores;
+
+    for (auto& candidate : candidates)
+    {
+        copelandScores[candidate->name] = 0;
+    }
+
+    for (int i = 0; i < candidates.size(); i++)
+    {
+        for (int j = i + 1; j < candidates.size(); j++)
+        {
+            int winsI = 0, winsJ = 0;
+
+            for (auto& ballot : ballots)
+            {
+                auto posI = find(ballot.second.begin(), ballot.second.end(), candidates[i]->name);
+                auto posJ = find(ballot.second.begin(), ballot.second.end(), candidates[j]->name);
+                if (posI < posJ)
+                {
+                    winsI++;
+                }
+                else if (posJ < posI)
+                {
+                    winsJ++;
+                }
+            }
+
+            if (winsI > winsJ)
+            {
+                copelandScores[candidates[i]->name]++;
+            }
+            else if (winsJ > winsI)
+            {
+                copelandScores[candidates[j]->name]++;
+            }
+        }
+    }
+
+    results.clear();
+    for (auto& score : copelandScores)
+    {
+        results.push_back(make_pair(score.first, score.second));
+    }
+
+    sort(results.begin(), results.end(), [](const pair<string, double>& a, const pair<string, double>& b)
+    {
+        return a.second > b.second;
+    });
+}
+//--
+void RCV::computeDowdall()
+{
+    if (candidates.size() < 2)
+    {
+        printf("Too few candidates to do a vote.\n");
+        return;
+    }
+    
+    results.resize(candidates.size());
+
+    for (int i = 0; i < candidates.size(); i++)
+    {
+        pair <string, double> candidateResult;
+        candidateResult.first = candidates[i]->name;
+        candidateResult.second = 0;
+        results[i] = candidateResult;
+    }
+
+    for (int i = 0; i < candidates.size(); i++)
+    {
+        for (int j = 0; j < candidates[i]->nthPlaceVotes.size(); j++)
+        {
+            results[i].second += static_cast<double>(candidates[i]->nthPlaceVotes[j]) / static_cast<double>(j + 1.0f);
+        }
+    }
+    sort(results.begin(), results.end(), compare);
+}
+//--
+void RCV::computeMinimax()
+{
+    if (candidates.size() < 2)
+    {
+        printf("Too few candidates to do a vote.\n");
+        return;
+    }
+
+    results.clear();
+    vector <vector<pair<int, int>>> comparisonTable;
+    comparisonTable.resize(candidates.size());
+
+    for (int i = 0; i < candidates.size(); i++)
+    {
+        comparisonTable[i].resize(candidates.size());
+    }
+
+    for (int i = 0; i < comparisonTable.size(); i++)
+    {
+        for (int j = 0; j < comparisonTable[i].size(); j++)
+        {
+            comparisonTable[i][j] = prefers(candidates[i], candidates[j]);
+        }
+    }
+
+    for (int i = 0; i < comparisonTable.size(); i++)
+    {
+        int min = INT_MAX;
+        for (int j = 0; j < comparisonTable[i].size(); j++)
+        {
+            if (i == j)
+            {
+                continue;
+            }
+            if (comparisonTable[i][j].first < min)
+            {
+                min = comparisonTable[i][j].first;
+            }
+        }
+        pair <string, double> result;
+        result.first = candidates[i]->name;
+        result.second = static_cast<double>(min);
+        results.push_back(result);
+    }
+    sort(results.begin(), results.end(), compare);
 }
 //--
 void RCV::printResults()
@@ -253,7 +472,7 @@ void RCV::printResults()
 
     for (int i = 0; i < results.size(); i++)
     {
-        printf("#%d) %s, %d\n", i + 1, results[i].first.c_str(), results[i].second);
+        printf("#%d) %s, %f\n", i + 1, results[i].first.c_str(), results[i].second);
     }
 }
 //--
@@ -297,7 +516,72 @@ int RCV::getCandidate(string& candName)
     return -1;
 }
 //--
-bool RCV::bordaCompare(pair <string, int> x, pair<string, int> y)
+bool RCV::compare(pair <string, double> x, pair<string, double> y)
 {
     return x.second > y.second;
+}
+//--
+void RCV::eliminateCandidate(Candidate* c)
+{
+    eliminated_HT.insert(c->name);
+
+    for (int i = 0; i < eliminatedBallots.size(); i++)
+    {
+        for (int j = 0; j < eliminatedBallots[i].second.size(); j++)
+        {
+            if (eliminated_HT.count(eliminatedBallots[i].second[j]))
+            {
+                eliminatedBallots[i].second.erase(eliminatedBallots[i].second.begin() + j);
+            }
+        }
+    }
+}
+//--
+string RCV::cleanse(const string& word)
+{
+    string retString = "";
+    int x;
+    int count = 0;
+
+    for (int i = 0; i < word.size(); i++)
+    {
+        x = int(word[i]);
+
+        if ((x > 96) and (x < 123) or (x > 191) and (x < 256)) //if it's a lowercase letter or utf8 character, add it to the return string.
+        {
+            retString += char(x);
+        }
+        else if (x > 64 and x < 91) //if it's an uppercase letter, convert to it's lowercase equivalent, and add it to the return string.
+        {
+            retString += char(x);
+        }
+    }
+    return retString;
+}
+pair<int, int> RCV::prefers(Candidate* a, Candidate* b)
+{
+    int tallya = 0;
+    int tallyb = 0;
+    
+    for (int i = 0; i < ballots.size(); i++)
+    {
+        for (int j = 0; j < ballots[i].second.size(); j++)
+        {
+            if (ballots[i].second[j] == a->name)
+            {
+                tallya++;
+                break;
+            }
+            else if (ballots[i].second[j] == b->name)
+            {
+                tallyb++;
+                break;
+            }
+        }
+    }
+
+    pair <int, int> retPair;
+    retPair.first = tallya;
+    retPair.second = tallyb;
+    return retPair;
 }
