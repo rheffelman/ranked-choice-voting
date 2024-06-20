@@ -1,4 +1,4 @@
-// Dear ImGui: standalone example application for DirectX 10
+// Dear ImGui: standalone example application for DirectX 11
 
 // Learn about Dear ImGui:
 // - FAQ                  https://dearimgui.com/faq
@@ -8,17 +8,17 @@
 
 #include "imgui.h"
 #include "imgui_impl_win32.h"
-#include "imgui_impl_dx10.h"
-#include <d3d10_1.h>
-#include <d3d10.h>
+#include "imgui_impl_dx11.h"
+#include <d3d11.h>
 #include <tchar.h>
 
 // Data
-static ID3D10Device*            g_pd3dDevice = nullptr;
+static ID3D11Device*            g_pd3dDevice = nullptr;
+static ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
 static IDXGISwapChain*          g_pSwapChain = nullptr;
 static bool                     g_SwapChainOccluded = false;
 static UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
-static ID3D10RenderTargetView*  g_mainRenderTargetView = nullptr;
+static ID3D11RenderTargetView*  g_mainRenderTargetView = nullptr;
 
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);
@@ -34,7 +34,7 @@ int main(int, char**)
     //ImGui_ImplWin32_EnableDpiAwareness();
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ImGui Example", nullptr };
     ::RegisterClassExW(&wc);
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Dear ImGui DirectX10 Example", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr);
+    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Dear ImGui DirectX11 Example", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr);
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
@@ -61,7 +61,7 @@ int main(int, char**)
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
-    ImGui_ImplDX10_Init(g_pd3dDevice);
+    ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
     // Load Fonts
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
@@ -119,7 +119,7 @@ int main(int, char**)
         }
 
         // Start the Dear ImGui frame
-        ImGui_ImplDX10_NewFrame();
+        ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
@@ -163,9 +163,9 @@ int main(int, char**)
         // Rendering
         ImGui::Render();
         const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
-        g_pd3dDevice->OMSetRenderTargets(1, &g_mainRenderTargetView, nullptr);
-        g_pd3dDevice->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
-        ImGui_ImplDX10_RenderDrawData(ImGui::GetDrawData());
+        g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, nullptr);
+        g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
+        ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
         // Present
         HRESULT hr = g_pSwapChain->Present(1, 0);   // Present with vsync
@@ -174,7 +174,7 @@ int main(int, char**)
     }
 
     // Cleanup
-    ImGui_ImplDX10_Shutdown();
+    ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
 
@@ -207,10 +207,12 @@ bool CreateDeviceD3D(HWND hWnd)
     sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
     UINT createDeviceFlags = 0;
-    //createDeviceFlags |= D3D10_CREATE_DEVICE_DEBUG;
-    HRESULT res = D3D10CreateDeviceAndSwapChain(nullptr, D3D10_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, D3D10_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice);
+    //createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+    D3D_FEATURE_LEVEL featureLevel;
+    const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
+    HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
     if (res == DXGI_ERROR_UNSUPPORTED) // Try high-performance WARP software driver if hardware is not available.
-        res = D3D10CreateDeviceAndSwapChain(nullptr, D3D10_DRIVER_TYPE_WARP, nullptr, createDeviceFlags, D3D10_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice);
+        res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
     if (res != S_OK)
         return false;
 
@@ -222,12 +224,13 @@ void CleanupDeviceD3D()
 {
     CleanupRenderTarget();
     if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = nullptr; }
+    if (g_pd3dDeviceContext) { g_pd3dDeviceContext->Release(); g_pd3dDeviceContext = nullptr; }
     if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = nullptr; }
 }
 
 void CreateRenderTarget()
 {
-    ID3D10Texture2D* pBackBuffer;
+    ID3D11Texture2D* pBackBuffer;
     g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
     g_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, &g_mainRenderTargetView);
     pBackBuffer->Release();
