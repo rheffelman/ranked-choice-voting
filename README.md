@@ -1,4 +1,4 @@
-# A C++ Library For Ranked Choice Voting Computations.
+# A C++ Library For Ranked-Choice Voting Computations.
 ### [How input works.](https://github.com/rheffelman/ranked-voting-library/blob/main/input.md)
 ### [Supported ranked-choice voting systems and how to use them.](https://github.com/rheffelman/ranked-voting-library/blob/main/votingsystems.md)<br/>
 
