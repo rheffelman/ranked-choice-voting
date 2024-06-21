@@ -1,6 +1,10 @@
 # A C++ Library For Ranked Choice Voting Computations.
+### [How input works.](https://github.com/rheffelman/ranked-voting-library/blob/main/input.md)
+### [Supported ranked-choice voting systems and how to use them.](https://github.com/rheffelman/ranked-voting-library/blob/main/votingsystems.md)<br/>
+
+
 ## What?
-Ranked choice voting is a voting system where voters provide a ranked list for their choice in candidates. For example, here's a ranked choice voting ballot from a poll I did on people's preferences for 7 different types of candy.
+Ranked choice voting is a voting system where voters provide a ranked list for their choice of candidates. For example, here's a ranked choice voting ballot from a poll I did on people's preferences for 7 different types of candy.
 
 ```
 1st Choice: Reese's
@@ -14,7 +18,7 @@ Ranked choice voting is a voting system where voters provide a ranked list for t
 
 There is a pretty good wikipedia on the subject, [see here.](https://en.wikipedia.org/wiki/Ranked_voting)<br />
 
-This repository provides a C++ library
+This repository provides a C++ library for performing all sorts of different ranked-choice voting computations to make it easier to implement ranked-choice voting in applications and everyday use. It currently supports 8 different ranked-voting systems, and an easy way to input and output voting data/ballots.
 
 ## Why?
 Ranked choice voting is typically thought of as a "better" way to go about voting as it is able to reflect the opinions of the voters in more detail. For example, take this FPTP election (FPTP is a "typical" voting system where voters get one vote for one candidate).
