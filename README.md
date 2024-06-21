@@ -18,7 +18,7 @@ Ranked-choice voting is a voting system where voters provide a ranked list for t
 
 There is a pretty good wikipedia on the subject, [see here.](https://en.wikipedia.org/wiki/Ranked_voting)<br />
 
-This repository provides a C++ library for performing all sorts of different ranked-choice voting computations to make it easier to implement ranked-choice voting in applications and everyday use. It currently supports 8 different ranked-voting systems, and an easy way to input and output voting data/ballots.
+This repository provides a C++ library for performing all sorts of different ranked-choice voting computations to make it easier to implement ranked-choice voting in applications and everyday use. It currently supports 8 different ranked-voting systems, and an easy way to input and output voting data/ballots. It's also completely free and open-source.
 
 ## Why?
 Ranked-choice voting is typically thought of as a "better" way to go about voting as it is able to reflect the opinions of the voters in more detail. For example, take this FPTP election (FPTP is a "typical" voting system where voters get one vote for one candidate).
