@@ -1,134 +1,105 @@
 #include"RCV.h"
 
-int RCV::addCandidate(string& name)
+void RCV::UltimateVotingSystem()
 {
-    if (getCandidate(name) != -1)
-    {
-        printf("Candidate already exists!\n");
-        return -1;
-    }
+    results.clear();
 
-    Candidate* temp = new Candidate(name);
-    vector <int> npv;
-    npv.resize(candidates.size(), 0);
-    temp->name = name;
-    temp->nthPlaceVotes = npv;
-    candidates.push_back(temp);
-    candidates_HT.insert(temp->name);
-    numCandidates++;
+    // compute Borda Count election
+    computeBorda();
+    // store results
+    vector<pair<string, double>> bordaResultsTemp = results;
+    vector<string> bordaResults;
+    for (int i = 0; i < bordaResultsTemp.size(); i++)
+        bordaResults.push_back(bordaResultsTemp[i].first);
 
-    for (int i = 0; i < candidates.size(); i++)
-    {
-        candidates[i]->nthPlaceVotes.push_back(0);
-    }
-    return 0;
-}
-//--
-void RCV::addBallot(vector<string>& b)
-{
-    if (b.size())
-    {
-        for (int i = 0; i < b.size(); i++)
-        {
-			b[i] = cleanse(b[i]);
-		}
-        int ballotID = numBallots;
-        pair <int, vector<string>> ballot;
-        ballot.first = ballotID;
-        ballot.second = b;
-        ballots.push_back(ballot);
-        numBallots++;
+    // compute Plurality election
+    computePlurality();
+    // store results
+    vector<pair<string, double>> pluralityResultsTemp = results;
+    vector<string> pluralityResults;
+    for (int i = 0; i < pluralityResultsTemp.size(); i++)
+        pluralityResults.push_back(pluralityResultsTemp[i].first);
+        
+    // compute Plurality with Runoff election
+    computePluralityWithRunoff();
+    // store results
+    vector<pair<string, double>> pluralityRunoffResultsTemp = results;
+    vector<string> pluralityRunoffResults;
+    for (int i = 0; i < pluralityRunoffResultsTemp.size(); i++)
+        pluralityRunoffResults.push_back(pluralityRunoffResultsTemp[i].first);
 
-        int x = -1;
-        for (int i = 0; i < b.size(); i++)
-        {
-            x = getCandidate(b[i]);
-            if (x != -1)
-            {
-                candidates[getCandidate(b[i])]->nthPlaceVotes[i]++;
-            }
-            else
-            {
-                addCandidate(b[i]);
-                candidates[getCandidate(b[i])]->nthPlaceVotes[i]++;
-            }
-        }
-    }
-    else
-    {
-        printf("Ballots must contain atleast 1 vote.\n");
-    }
-}
-//--
-int RCV::addBallotsFromCSV(string& CSVinput)
-{
-    if (CSVinput.size() < 2)
-    {
-        printf("Input too small.\n");
-        return -1;
-    }
+    // compute IRV election
+    computeIRV();
+    // store results
+    vector<pair<string, double>> IRVResultsTemp = results;
+    vector<string> IRVResults;
+    for (int i = 0; i < IRVResultsTemp.size(); i++)
+        IRVResults.push_back(IRVResultsTemp[i].first);
 
-    vector <string> tempBallot;
-    string tempCandidateName = "";
+    // compute Copeland method election
+    computeCopeland();
+    // store results
+    vector<pair<string, double>> copelandResultsTemp = results;
+    vector<string> copelandResults;
+    for (int i = 0; i < copelandResultsTemp.size(); i++)
+        copelandResults.push_back(copelandResultsTemp[i].first);
 
-    for (int i = 0; i < CSVinput.size(); i++)
-    {
-        if (CSVinput[i] == ' ')
-        {
-            continue;
-        }
-        if (CSVinput[i] == '\n' or CSVinput[i] == ',')
-		{
-            if (!candidates_HT.count(tempCandidateName))
-			{
-				addCandidate(tempCandidateName);
-			}
-		}
-        if (CSVinput[i] == '\n')
-        {
-            tempBallot.push_back(tempCandidateName);
-            addBallot(tempBallot);
-            tempBallot.clear();
-            tempCandidateName = "";
-        }
-        if (CSVinput[i] == ',')
-        {
-            tempBallot.push_back(tempCandidateName);
-            tempCandidateName = "";
-        }
-        if (CSVinput[i] != ',' and CSVinput[i] != '\n' and CSVinput[i] != ' ')
-        {
-            tempCandidateName += CSVinput[i];
-        }
-            
-    }
-    return 0;
+    // compute Dowdall system election
+    computeDowdall();
+    // store results
+    vector<pair<string, double>> dowdallResultsTemp = results;
+    vector<string> dowdallResults;
+    for (int i = 0; i < dowdallResultsTemp.size(); i++)
+        dowdallResults.push_back(dowdallResultsTemp[i].first);
+
+    // compute Minimax election
+    computeMinimax();
+    // store results
+    vector<pair<string, double>> minimaxResultsTemp = results;
+    vector<string> minimaxResults;
+    for (int i = 0; i < minimaxResultsTemp.size(); i++) 
+        minimaxResults.push_back(minimaxResultsTemp[i].first);
+
+    // compute Baldwin method election
+    computeBaldwin();
+    // store results
+    vector<pair<string, double>> baldwinResultsTemp = results;
+    vector<string> baldwinResults;
+    for (int i = 0; i < baldwinResultsTemp.size(); i++) 
+        baldwinResults.push_back(baldwinResultsTemp[i].first);
+
+    // compute Copeland-Borda hybrid election (pairwise comparison of each candidate with the excess tallied up)
+    computeCopelandBorda();
+    // store results
+    vector<pair<string, double>> CopelandBordaResultsTemp = results;
+    vector<string> CopelandBordaResults;
+    for (int i = 0; i < CopelandBordaResultsTemp.size(); i++) 
+        CopelandBordaResults.push_back(CopelandBordaResultsTemp[i].first);
+
+    // eliminate the initial ballots
+    ballots.clear();
+
+    // treating all of the stored ranked results of the previous elections as ballots in and of
+    // themselves, feed the ballots back into the election system.
+    addBallot(bordaResults);
+    addBallot(pluralityResults);
+    addBallot(pluralityRunoffResults);
+    addBallot(IRVResults);
+    addBallot(copelandResults);
+    addBallot(dowdallResults);
+    addBallot(minimaxResults);
+    addBallot(baldwinResults);
+    addBallot(CopelandBordaResults);
+
+    // using the ballots created from the ranked order produced by 9 different voting systems,
+    // compute a borda count and print the results.
+    computeBorda();
+    printResults();
+
+    // Recursively call this method to keep getting "better and better" results.
+    UltimateVotingSystem();
 }
 //--
-vector <string> RCV::getCandidateNames()
-{
-    vector <string> names;
-    for (int i = 0; i < candidates.size(); i++)
-    {
-        names.push_back(candidates[i]->name);
-    }
-    return names;
-}
-//--
-int RCV::getBallotCount()
-{
-    return ballots.size();
-}
-//--
-int RCV::getCandidateCount()
-{
-    return candidates.size();
-}
-//--
-vector <pair<string, double>> RCV::getResults()
-{
-    return results; 
-}
 void RCV::computeMajority()
 {
     if (!candidates.size())
@@ -163,6 +134,7 @@ void RCV::computeBorda()
     if (!candidates.size())
     {
         printf("Can't do a vote with no candidates!\n");
+        return;
     }
 
     results.resize(candidates.size());
@@ -225,14 +197,14 @@ void RCV::computePluralityWithRunoff()
 
     for (int i = 0; i < ballots.size(); i++)
     {
-        for (int j = 0; j < ballots[i].second.size(); j++)
+        for (int j = 0; j < ballots[i].size(); j++)
         {
-            if (ballots[i].second[j] == candidate1.first)
+            if (ballots[i][j] == candidate1.first)
             {
                 ar[0]++;
                 break;
             }
-            else if (ballots[i].second[j] == candidate2.first)
+            else if (ballots[i][j] == candidate2.first)
             {
                 ar[1]++;
                 break;
@@ -269,7 +241,7 @@ void RCV::computeIRV()
     });
 }
 //--
-void RCV::computeIRVHelper(vector<Candidate*>& remainingCandidates, vector<pair<int, vector<string>>>& remainingBallots, int rank)
+void RCV::computeIRVHelper(vector<Candidate*>& remainingCandidates, vector<vector<string>>& remainingBallots, int rank)
 {
     if (remainingCandidates.size() == 1)
     {
@@ -280,9 +252,9 @@ void RCV::computeIRVHelper(vector<Candidate*>& remainingCandidates, vector<pair<
     map<string, int> voteCount;
     for (auto& ballot : remainingBallots)
     {
-        if (!ballot.second.empty())
+        if (!ballot.empty())
         {
-            string firstChoice = ballot.second[0];
+            string firstChoice = ballot[0];
             voteCount[firstChoice]++;
         }
     }
@@ -307,10 +279,10 @@ void RCV::computeIRVHelper(vector<Candidate*>& remainingCandidates, vector<pair<
         }
     }
 
-    vector<pair<int, vector<string>>> nextBallots = remainingBallots;
+    vector<vector<string>> nextBallots = remainingBallots;
     for (auto& ballot : nextBallots)
     {
-        ballot.second.erase(remove(ballot.second.begin(), ballot.second.end(), candidateToEliminate), ballot.second.end());
+        ballot.erase(remove(ballot.begin(), ballot.end(), candidateToEliminate), ballot.end());
     }
 
     computeIRVHelper(nextCandidates, nextBallots, rank + 1);
@@ -340,8 +312,8 @@ void RCV::computeCopeland()
 
             for (auto& ballot : ballots)
             {
-                auto posI = find(ballot.second.begin(), ballot.second.end(), candidates[i]->name);
-                auto posJ = find(ballot.second.begin(), ballot.second.end(), candidates[j]->name);
+                auto posI = find(ballot.begin(), ballot.end(), candidates[i]->name);
+                auto posJ = find(ballot.begin(), ballot.end(), candidates[j]->name);
                 if (posI < posJ)
                 {
                     winsI++;
@@ -449,6 +421,227 @@ void RCV::computeMinimax()
     }
     sort(results.begin(), results.end(), compare);
 }
+//--
+void RCV::computeBaldwin()
+{
+    results.clear();
+    computeBaldwinHelper(candidates, ballots, 1);
+    sort(results.begin(), results.end(), compare);
+
+}
+//--
+void RCV::computeBaldwinHelper(vector<Candidate*>& remainingCandidates, vector<vector<string>>& remainingBallots, int rank)
+{
+    if (remainingCandidates.size() == 1)
+    {
+        results.push_back( {remainingCandidates[0]->name, static_cast<double>(rank)});
+        return;
+    }
+
+    // compute a borda count with the remaining candidates
+    map <string, int> bordaCount;
+    for (int i = 0; i < remainingBallots.size(); i++)
+    {
+        int x = candidates.size() - 1;
+        int count = 0;
+        for (int j = 0; j < remainingBallots[i].size(); j++)
+        {
+            bordaCount[remainingBallots[i][j]] += x;
+            x--;
+        }
+    }
+
+    // identify which candidate has the lowest borda count
+    std::string candidateToEliminate;
+    int smallestCount = INT_MAX;
+    for (int i = 0; i < remainingCandidates.size(); i++)
+    {
+        if (bordaCount[remainingCandidates[i]->name] < smallestCount)
+        {
+            smallestCount = bordaCount[remainingCandidates[i]->name];
+            candidateToEliminate = remainingCandidates[i]->name;
+        }
+    }
+
+    // setup the candidate vector for the next recursion to use with 1 candidate eliminated
+    vector <Candidate*> nextRecursionCandidates;
+    for (int i = 0; i < remainingCandidates.size(); i++)
+    {
+        if (remainingCandidates[i]->name != candidateToEliminate)
+        {
+            nextRecursionCandidates.push_back(remainingCandidates[i]);
+        }
+    }
+
+    // setup the ballots vector for the next recursion without any instances of the eliminated candidate.
+    vector<vector<string>> nextBallots = remainingBallots;
+    for (int i = 0; i < nextBallots.size(); i++)
+    {
+        nextBallots[i].erase(remove(nextBallots[i].begin(), nextBallots[i].end(), candidateToEliminate), nextBallots[i].end());
+    }
+
+    computeBaldwinHelper(nextRecursionCandidates, nextBallots, rank + 1);
+    results.push_back({ candidateToEliminate, static_cast<double>(rank) });
+}
+void RCV::computeCopelandBorda()
+{
+    if (candidates.size() < 2)
+    {
+        printf("Too few candidates to do a vote.\n");
+        return;
+    }
+
+    results.clear();
+
+    for (int i = 0; i < candidates.size(); i++)
+    {
+        pair<string, double> result;
+        result.first = candidates[i]->name;
+        result.second = 0;
+        for (int j = 0; j < candidates.size(); j++)
+        {
+            if (i != j)
+            {
+                pair <int, int> comparison = prefers(candidates[i], candidates[j]);
+                if (comparison.first - comparison.second > 0)
+                {
+                    result.second += comparison.first - comparison.second;
+                }
+            }
+        }
+        results.push_back(result);
+    }
+
+    sort(results.begin(), results.end(), compare);
+}
+//--
+
+//--
+int RCV::addCandidate(string& name)
+{
+    if (getCandidate(name) != -1)
+    {
+        printf("Candidate already exists!\n");
+        return -1;
+    }
+
+    Candidate* temp = new Candidate(name);
+    vector <int> npv;
+    npv.resize(candidates.size(), 0);
+    temp->name = name;
+    temp->nthPlaceVotes = npv;
+    candidates.push_back(temp);
+    candidates_HT.insert(temp->name);
+    numCandidates++;
+
+    for (int i = 0; i < candidates.size(); i++)
+    {
+        candidates[i]->nthPlaceVotes.push_back(0);
+    }
+    return 0;
+}
+//--
+void RCV::addBallot(vector<string>& b)
+{
+    if (b.size())
+    {
+        for (int i = 0; i < b.size(); i++)
+        {
+			b[i] = cleanse(b[i]);
+		}
+        ballots.push_back(b);
+
+        int x = -1;
+        for (int i = 0; i < b.size(); i++)
+        {
+            x = getCandidate(b[i]);
+            if (x != -1)
+            {
+                candidates[getCandidate(b[i])]->nthPlaceVotes[i]++;
+            }
+            else
+            {
+                addCandidate(b[i]);
+                candidates[getCandidate(b[i])]->nthPlaceVotes[i]++;
+            }
+        }
+    }
+    else
+    {
+        printf("Ballots must contain atleast 1 vote.\n");
+    }
+}
+//--
+int RCV::addBallotsFromCSV(string& CSVinput)
+{
+    if (CSVinput.size() < 2)
+    {
+        printf("Input too small.\n");
+        return -1;
+    }
+
+    vector <string> tempBallot;
+    string tempCandidateName = "";
+
+    for (int i = 0; i < CSVinput.size(); i++)
+    {
+        if (CSVinput[i] == ' ')
+        {
+            continue;
+        }
+        if (CSVinput[i] == '\n' or CSVinput[i] == ',')
+		{
+            if (!candidates_HT.count(tempCandidateName))
+			{
+				addCandidate(tempCandidateName);
+			}
+		}
+        if (CSVinput[i] == '\n')
+        {
+            tempBallot.push_back(tempCandidateName);
+            addBallot(tempBallot);
+            tempBallot.clear();
+            tempCandidateName = "";
+        }
+        if (CSVinput[i] == ',')
+        {
+            tempBallot.push_back(tempCandidateName);
+            tempCandidateName = "";
+        }
+        if (CSVinput[i] != ',' and CSVinput[i] != '\n' and CSVinput[i] != ' ')
+        {
+            tempCandidateName += CSVinput[i];
+        }
+            
+    }
+    return 0;
+}
+//--
+vector <string> RCV::getCandidateNames()
+{
+    vector <string> names;
+    for (int i = 0; i < candidates.size(); i++)
+    {
+        names.push_back(candidates[i]->name);
+    }
+    return names;
+}
+//--
+int RCV::getBallotCount()
+{
+    return ballots.size();
+}
+//--
+int RCV::getCandidateCount()
+{
+    return candidates.size();
+}
+//--
+vector <pair<string, double>> RCV::getResults()
+{
+    return results; 
+}
+//--
 //--
 void RCV::printResults()
 {
@@ -558,6 +751,30 @@ string RCV::cleanse(const string& word)
     }
     return retString;
 }
+//--
+string RCV::getCondorcetWinner()
+{
+    
+    for (int i = 0; i < candidates.size(); i++)
+    {
+        bool condorcetExists = true;
+        for (int j = 0; j < candidates.size(); j++)
+        {
+            pair <int, int> comparison = prefers(candidates[i], candidates[j]);
+            if (comparison.second >= comparison.first)
+            {
+                condorcetExists = false;
+                break;
+            }
+        }
+        if (condorcetExists)
+        {
+            return candidates[i]->name;
+        }
+    }
+    return "No Condorcet Winner";
+}
+//--
 pair<int, int> RCV::prefers(Candidate* a, Candidate* b)
 {
     int tallya = 0;
@@ -565,14 +782,14 @@ pair<int, int> RCV::prefers(Candidate* a, Candidate* b)
     
     for (int i = 0; i < ballots.size(); i++)
     {
-        for (int j = 0; j < ballots[i].second.size(); j++)
+        for (int j = 0; j < ballots[i].size(); j++)
         {
-            if (ballots[i].second[j] == a->name)
+            if (ballots[i][j] == a->name)
             {
                 tallya++;
                 break;
             }
-            else if (ballots[i].second[j] == b->name)
+            else if (ballots[i][j] == b->name)
             {
                 tallyb++;
                 break;

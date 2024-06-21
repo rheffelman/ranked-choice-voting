@@ -32,12 +32,15 @@ public:
     void computeCopeland();
     void computeDowdall();
     void computeMinimax();
+    void computeBaldwin();
+    void computeCopelandBorda();
+    void UltimateVotingSystem();
 
     vector <string> getCandidateNames();
     int getBallotCount();
     int getCandidateCount();
     vector <pair<string, double>> getResults();
-    void getCondorcetWinner();
+    string getCondorcetWinner();
 
     void printResults();
     void printCandidates();
@@ -45,7 +48,7 @@ public:
 
 private:
 
-    vector <pair<int, vector<string>>> ballots;
+    vector <vector<string>> ballots;
     vector <Candidate*> candidates;
     vector <pair<string, double>> results;
 
@@ -56,9 +59,12 @@ private:
     int numCandidates = 0;
 
     int getCandidate(string& candName);
-    void computeIRVHelper(vector<Candidate*>& remainingCandidates, vector<pair<int, vector<string>>>& remainingBallots, int rank);
     static bool compare(pair <string, double> x, pair <string, double> y);
     void eliminateCandidate(Candidate* c);
     string cleanse(const string& word);
-    pair<int, int> prefers(Candidate* a, Candidate* b); // a helper for Minimax
+    pair<int, int> prefers(Candidate* a, Candidate* b); // a helper for Minimax and CopelandBorda
+
+    void computeIRVHelper(vector<Candidate*>& remainingCandidates, vector<vector<string>>& remainingBallots, int rank);
+    void computeBaldwinHelper(vector<Candidate*>& remainingCandidates, vector<vector<string>>& remainingBallots, int rank);
+
 };
