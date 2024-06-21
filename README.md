@@ -52,7 +52,7 @@ Voter 8: G, B, C, D, E, F, A
 As you can see from this ballot, the desire of the voters is NOT to elect candidate A, 6 out of 8 voters put candidate A as the very last candidate that they would like to see elected, it would be absurd to elect candidate A. A more reasonable choice would be to elect someone like candidate B who is every voters second place choice except Voter 3 who picked candidate B as their first choice.
 </br>
 
-### This library was created to shed light on alternative, voting systems, and to inspire more mature voting practices that better reflect the desires of the voter.
+### This library was created to shed light on alternative voting systems, and to inspire more mature voting practices that better reflect the desires of the voter.
 
 ## How?
 Here's a full example usage of the library:
